@@ -1,0 +1,90 @@
+// Source of truth for the data model.
+// `scripts/prisma-schema.mjs` prepends the datasource block (sqlite or
+// postgresql, chosen from DATABASE_URL) and writes prisma/schema.prisma.
+// Edit THIS file, never the generated one.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+enum TxType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  /// ISO 4217 code used for display formatting (amounts are stored in minor units).
+  currency     String   @default("LKR")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      TxType
+  /// Hex colour, e.g. "#10b981".
+  color     String
+  createdAt DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budget       Budget?
+
+  @@unique([userId, name, type])
+  @@index([userId, type])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  categoryId  String
+  type        TxType
+  /// Amount in minor units (cents). Always positive; `type` gives the direction.
+  amountMinor Int
+  description String
+  /// Calendar day of the transaction, stored as 00:00 UTC.
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict: a category with transactions must be emptied/reassigned first.
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([userId, categoryId])
+  @@index([userId, type, date])
+}
+
+model Budget {
+  id                String @id @default(cuid())
+  userId            String
+  categoryId        String @unique
+  monthlyLimitMinor Int
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Fixed-window counter used for login throttling. Stored in the DB so it
+/// works across serverless instances.
+model RateLimit {
+  key         String    @id
+  count       Int       @default(0)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
+}

@@ -232,8 +232,3 @@ The app was also checked end-to-end in a real browser (register → add/edit/del
 - Registration necessarily reveals whether an email is already registered (409); login does not.
 - Changing the display currency re-formats amounts; it does not convert them.
 
-## Documentation
-
-- [DESIGN.md](DESIGN.md) — palette, typography, layout, wireframes
-- [CLAUDE.md](CLAUDE.md) — stack, commands and code conventions
-- [docs/CHECKLIST.md](docs/CHECKLIST.md) — assignment requirements mapped to the implementation
